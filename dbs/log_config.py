@@ -32,6 +32,13 @@ Example with dynamic naming
     logger = logging.getLogger(__name__)
 """
 
+import os
+
+# Ensure the log directory exists before configuring logging.  This
+# prevents `logging.config.dictConfig` from failing when the directory
+# is missing, such as during fresh test runs.
+os.makedirs("log", exist_ok=True)
+
 LOG_CONFIG = {
     "version": 1,
     "disable_existing_loggers": False,
