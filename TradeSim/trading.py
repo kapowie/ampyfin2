@@ -243,6 +243,9 @@ def execute_buy_orders(mongo_client: MongoClient, trading_client: TradingClient)
             """
             This is here so order will propage through and we will have an accurate cash balance recorded
             """
+            # Refresh account balance after executing the order so the loop
+            # condition reflects the latest cash value on the next iteration.
+            account = trading_client.get_account()
         except Exception as e:
             print(f"Error occurred while executing buy order due to {e}. Continuing...")
             break
