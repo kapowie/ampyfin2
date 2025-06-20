@@ -37,3 +37,4 @@ def test_fetch_latest_prices_real(monkeypatch):
 
     prices = bq.fetch_latest_prices_bq()
     assert isinstance(prices, dict)
+    assert prices  # should contain at least one ticker price
