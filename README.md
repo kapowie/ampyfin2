@@ -64,7 +64,47 @@ Each strategy is evaluated based on performance metrics and assigned a weight us
 | `TradeSim/ranking.py` | Evaluates and ranks trading strategies          |
 | `strategies/*`        | Implementation of various trading algorithms    |
 | `utilites/*`          | General Utility functions                       |
-| `dbs/*`               | Create SQLite DBs of prices and decisions       |
+
+### Domain Model
+
+```mermaid
+%% Mermaid diagram summarizing core modules and dependencies
+classDiagram
+    class Control
+    class Config
+    class TradeSimMain
+    class Training
+    class Testing
+    class Ranking
+    class Trading
+    class Strategies
+    class CommonUtils
+    class RankingTradingUtils
+    class TestingUtils
+    class Databases
+    class ExternalServices
+
+    Control --> TradeSimMain
+    Config --> TradeSimMain
+    TradeSimMain --> Training
+    TradeSimMain --> Testing
+    Training --> Strategies
+    Training --> CommonUtils
+    Training --> RankingTradingUtils
+    Testing --> Strategies
+    Testing --> CommonUtils
+    Testing --> TestingUtils
+    Testing --> RankingTradingUtils
+    Ranking --> Strategies
+    Ranking --> RankingTradingUtils
+    Ranking --> CommonUtils
+    Trading --> Strategies
+    Trading --> RankingTradingUtils
+    Trading --> CommonUtils
+    CommonUtils --> Databases
+    RankingTradingUtils --> ExternalServices
+    TestingUtils --> ExternalServices
+```
 
 ## Installation
 
