@@ -1,5 +1,7 @@
+import json
 import logging
-from typing import Dict
+import os
+from typing import Dict, Optional
 
 from google.cloud import bigquery
 from google.oauth2 import service_account
@@ -16,6 +18,23 @@ logger = logging.getLogger(__name__)
 _cached_prices: Dict[str, float] = {}
 
 
+def _load_credentials() -> Optional[service_account.Credentials]:
+    """Return Credentials from BQ_SERVICE_ACCOUNT if provided."""
+    if not BQ_SERVICE_ACCOUNT:
+        return None
+
+    if os.path.isfile(BQ_SERVICE_ACCOUNT):
+        return service_account.Credentials.from_service_account_file(BQ_SERVICE_ACCOUNT)
+
+    try:
+        info = json.loads(BQ_SERVICE_ACCOUNT)
+    except Exception as exc:  # pragma: no cover - invalid json
+        logger.error(f"Invalid BQ_SERVICE_ACCOUNT: {exc}")
+        return None
+
+    return service_account.Credentials.from_service_account_info(info)
+
+
 def fetch_latest_prices_bq() -> Dict[str, float]:
     """Fetch the latest prices from BigQuery.
 
@@ -24,10 +43,8 @@ def fetch_latest_prices_bq() -> Dict[str, float]:
     global _cached_prices
 
     try:
-        if BQ_SERVICE_ACCOUNT:
-            creds = service_account.Credentials.from_service_account_file(
-                BQ_SERVICE_ACCOUNT
-            )
+        creds = _load_credentials()
+        if creds:
             client = bigquery.Client(credentials=creds)
         else:
             client = bigquery.Client()
