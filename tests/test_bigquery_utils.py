@@ -23,11 +23,13 @@ def load_bigquery_utils(monkeypatch, service_account=""):
 
     class DummyCreds:
         @classmethod
-        def from_service_account_file(cls, path):
+        def from_service_account_file(cls, path, **kwargs):
             return cls()
 
         @classmethod
-        def from_service_account_info(cls, info):  # pragma: no cover - used indirectly
+        def from_service_account_info(
+            cls, info, **kwargs
+        ):  # pragma: no cover - used indirectly
             return cls()
 
     service_account_mod.Credentials = DummyCreds
@@ -88,6 +90,19 @@ def test_fetch_latest_prices_success(monkeypatch):
     assert prices == {"AAPL": 123.45, "MSFT": 54.32}
 
 
+def test_fetch_latest_prices_ignores_empty_rows(monkeypatch):
+    bq = load_bigquery_utils(monkeypatch)
+    rows = [
+        {"ticker": "AAPL", "price": 123.45},
+        {"ticker": None, "price": None},
+    ]
+    monkeypatch.setattr(bq.bigquery, "Client", make_client(rows), raising=False)
+
+    prices = bq.fetch_latest_prices_bq()
+
+    assert prices == {"AAPL": 123.45}
+
+
 def test_fetch_latest_prices_failure_uses_cache(monkeypatch):
     bq = load_bigquery_utils(monkeypatch)
     rows = [{"ticker": "GOOG", "price": 99.9}]
@@ -108,8 +123,9 @@ def test_json_service_account(monkeypatch):
 
     captured = {}
 
-    def fake_from_info(info):
+    def fake_from_info(info, scopes=None):
         captured["info"] = info
+        captured["scopes"] = scopes
         return bq.service_account.Credentials()
 
     monkeypatch.setattr(
@@ -122,3 +138,4 @@ def test_json_service_account(monkeypatch):
     bq.fetch_latest_prices_bq()
 
     assert captured["info"] == data
+    assert captured["scopes"] == bq._SCOPES

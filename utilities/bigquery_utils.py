@@ -17,6 +17,12 @@ logger = logging.getLogger(__name__)
 
 _cached_prices: Dict[str, float] = {}
 
+# scopes required for BigQuery and Drive access
+_SCOPES = [
+    "https://www.googleapis.com/auth/bigquery",
+    "https://www.googleapis.com/auth/drive",
+]
+
 
 def _load_credentials() -> Optional[service_account.Credentials]:
     """Return Credentials from BQ_SERVICE_ACCOUNT if provided."""
@@ -24,7 +30,10 @@ def _load_credentials() -> Optional[service_account.Credentials]:
         return None
 
     if os.path.isfile(BQ_SERVICE_ACCOUNT):
-        return service_account.Credentials.from_service_account_file(BQ_SERVICE_ACCOUNT)
+        return service_account.Credentials.from_service_account_file(
+            BQ_SERVICE_ACCOUNT,
+            scopes=_SCOPES,
+        )
 
     try:
         info = json.loads(BQ_SERVICE_ACCOUNT)
@@ -32,7 +41,7 @@ def _load_credentials() -> Optional[service_account.Credentials]:
         logger.error(f"Invalid BQ_SERVICE_ACCOUNT: {exc}")
         return None
 
-    return service_account.Credentials.from_service_account_info(info)
+    return service_account.Credentials.from_service_account_info(info, scopes=_SCOPES)
 
 
 def fetch_latest_prices_bq() -> Dict[str, float]:
@@ -52,7 +61,13 @@ def fetch_latest_prices_bq() -> Dict[str, float]:
         query = f"SELECT ticker, price FROM `{BQ_DATASET}.{BQ_TABLE}`"
         results = client.query(query).result()
 
-        prices = {row["ticker"]: float(row["price"]) for row in results}
+        prices: Dict[str, float] = {}
+        for row in results:
+            ticker = row.get("ticker")
+            price = row.get("price")
+            if ticker is None or price is None:
+                continue
+            prices[ticker] = float(price)
         _cached_prices = prices
         return prices
 
