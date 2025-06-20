@@ -70,19 +70,87 @@ Each strategy is evaluated based on performance metrics and assigned a weight us
 ```mermaid
 %% Mermaid diagram summarizing core modules and dependencies
 classDiagram
-    class Control
-    class Config
-    class TradeSimMain
-    class Training
+    class Control {
+        +mode
+        +train_* settings
+        +trade_* settings
+    }
+    class Config {
+        +API_KEY
+        +API_SECRET
+        +BASE_URL
+        +MONGO_URL
+    }
+    class TradeSimMain {
+        +main()
+    }
+    class Training {
+        +train()
+    }
     class Testing
-    class Ranking
-    class Trading
-    class Strategies
-    class CommonUtils
-    class RankingTradingUtils
-    class TestingUtils
-    class Databases
-    class ExternalServices
+    class Ranking {
+        +process_ticker()
+        +simulate_trade()
+        +update_portfolio_values()
+        +load_indicator_periods()
+        +process_early_hours()
+        +process_market_closed()
+        +process_market_open()
+        +main()
+    }
+    class Trading {
+        +process_ticker()
+        +execute_buy_orders()
+        +load_indicator_periods()
+        +initialize_strategy_coefficients()
+        +process_market_open()
+        +process_early_hours()
+        +process_market_closed()
+        +main()
+    }
+    class Strategies {
+        +BBANDS_indicator()
+        +EMA_indicator()
+        +ADX_indicator()
+        +RSI_indicator()
+    }
+    class CommonUtils {
+        +fetch_price_from_db()
+        +fetch_strategy_decisions()
+        +simulate_trading_day()
+        +local_update_portfolio_values()
+        +update_time_delta()
+        +weighted_majority_decision_and_median_quantity()
+        +compute_trade_quantities()
+        +execute_trade()
+        +update_points_and_trades()
+    }
+    class RankingTradingUtils {
+        +market_status()
+        +get_latest_price()
+        +place_order()
+        +update_ranks()
+    }
+    class TestingUtils {
+        +calculate_metrics()
+        +plot_cash_growth()
+        +generate_tear_sheet()
+    }
+    class Databases {
+        +download_OHLCV_from_yf()
+        +store_OHLCV_in_db()
+        +get_price_data_retry_loop()
+        +compute_and_store_strategy_decisions()
+        +check_ticker_tables_exist()
+        +retry_with_backoff()
+        +get_ndaq_tickers()
+    }
+    class ExternalServices {
+        +sell_all_positions()
+        +sync_positions()
+        +reset_account()
+        +reset_account_with_summary()
+    }
 
     Control --> TradeSimMain
     Config --> TradeSimMain
