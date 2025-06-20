@@ -58,7 +58,7 @@ def fetch_latest_prices_bq() -> Dict[str, float]:
         else:
             client = bigquery.Client()
 
-        query = f"SELECT ticker, price FROM `{BQ_DATASET}.{BQ_TABLE}`"
+        query = f"SELECT ticker, price FROM `{BQ_DATASET}.{BQ_TABLE}` limit 120"
         results = client.query(query).result()
 
         prices: Dict[str, float] = {}
