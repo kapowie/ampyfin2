@@ -1,0 +1,52 @@
+classDiagram
+    class Control {
+        +mode
+        +train_* settings
+        +trade_* settings
+    }
+    class Config {
+        +API_KEY
+        +API_SECRET
+        +BASE_URL
+        +MONGO_URL
+    }
+    class TradeSimMain {
+        +main()
+    }
+    class Training
+    class Testing
+    class Ranking
+    class Trading
+    class Strategies
+    class CommonUtils
+    class RankingTradingUtils
+    class TestingUtils
+    class Databases
+    class ExternalServices
+
+    Control --> TradeSimMain
+    Config --> TradeSimMain
+
+    TradeSimMain --> Training
+    TradeSimMain --> Testing
+
+    Training --> Strategies
+    Training --> CommonUtils
+    Training --> RankingTradingUtils
+
+    Testing --> Strategies
+    Testing --> CommonUtils
+    Testing --> TestingUtils
+    Testing --> RankingTradingUtils
+
+    Ranking --> Strategies
+    Ranking --> RankingTradingUtils
+    Ranking --> CommonUtils
+
+    Trading --> Strategies
+    Trading --> RankingTradingUtils
+    Trading --> CommonUtils
+
+    CommonUtils --> Databases
+    RankingTradingUtils --> ExternalServices
+    TestingUtils --> ExternalServices
