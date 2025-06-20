@@ -13,10 +13,30 @@ classDiagram
     class TradeSimMain {
         +main()
     }
-    class Training
+    class Training {
+        +train()
+    }
     class Testing
-    class Ranking
-    class Trading
+    class Ranking {
+        +process_ticker()
+        +simulate_trade()
+        +update_portfolio_values()
+        +load_indicator_periods()
+        +process_early_hours()
+        +process_market_closed()
+        +process_market_open()
+        +main()
+    }
+    class Trading {
+        +process_ticker()
+        +execute_buy_orders()
+        +load_indicator_periods()
+        +initialize_strategy_coefficients()
+        +process_market_open()
+        +process_early_hours()
+        +process_market_closed()
+        +main()
+    }
     class Strategies
     class CommonUtils
     class RankingTradingUtils
