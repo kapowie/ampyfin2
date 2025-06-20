@@ -1,9 +1,10 @@
 import importlib
+import json
 import sys
 import types
 
 
-def load_bigquery_utils(monkeypatch):
+def load_bigquery_utils(monkeypatch, service_account=""):
     env = {
         "API_KEY": "x",
         "API_SECRET": "y",
@@ -12,7 +13,7 @@ def load_bigquery_utils(monkeypatch):
         "MONGO_URL": "mongodb://example",
         "BQ_DATASET": "ds",
         "BQ_TABLE": "tbl",
-        "BQ_SERVICE_ACCOUNT": "",
+        "BQ_SERVICE_ACCOUNT": service_account,
     }
     for k, v in env.items():
         monkeypatch.setenv(k, v)
@@ -23,6 +24,10 @@ def load_bigquery_utils(monkeypatch):
     class DummyCreds:
         @classmethod
         def from_service_account_file(cls, path):
+            return cls()
+
+        @classmethod
+        def from_service_account_info(cls, info):  # pragma: no cover - used indirectly
             return cls()
 
     service_account_mod.Credentials = DummyCreds
@@ -95,3 +100,25 @@ def test_fetch_latest_prices_failure_uses_cache(monkeypatch):
     second = bq.fetch_latest_prices_bq()
 
     assert second == first
+
+
+def test_json_service_account(monkeypatch):
+    data = {"key": "value"}
+    bq = load_bigquery_utils(monkeypatch, json.dumps(data))
+
+    captured = {}
+
+    def fake_from_info(info):
+        captured["info"] = info
+        return bq.service_account.Credentials()
+
+    monkeypatch.setattr(
+        bq.service_account.Credentials,
+        "from_service_account_info",
+        fake_from_info,
+    )
+    monkeypatch.setattr(bq.bigquery, "Client", make_client([]), raising=False)
+
+    bq.fetch_latest_prices_bq()
+
+    assert captured["info"] == data
