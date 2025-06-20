@@ -13,6 +13,7 @@ MONGO_URL = os.getenv("MONGO_URL")
 BQ_DATASET = os.getenv("BQ_DATASET")
 BQ_TABLE = os.getenv("BQ_TABLE")
 BQ_SERVICE_ACCOUNT = os.getenv("BQ_SERVICE_ACCOUNT")
+USE_BIGQUERY_PRICES = os.getenv("USE_BIGQUERY_PRICES", "false").lower() == "true"
 
 # Check and fail explicitly if something is missing
 required_vars = {
