@@ -9,6 +9,8 @@ from google.oauth2 import service_account
 
 from config import BQ_DATASET, BQ_SERVICE_ACCOUNT, BQ_TABLE
 
+__all__ = ["fetch_latest_prices_bq", "get_latest_price_bq"]
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
@@ -82,3 +84,9 @@ def fetch_latest_prices_bq() -> Dict[str, float]:
     except Exception as exc:  # pragma: no cover - network-dependent
         logger.error(f"Error fetching prices from BigQuery: {exc}")
         return _cached_prices
+
+
+def get_latest_price_bq(ticker: str) -> float | None:
+    """Return the latest price for ``ticker`` using BigQuery cache."""
+    prices = fetch_latest_prices_bq()
+    return prices.get(ticker)

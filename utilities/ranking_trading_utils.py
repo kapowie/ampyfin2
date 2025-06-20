@@ -1,24 +1,19 @@
 import heapq
-import json
 import logging
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from urllib.request import urlopen
-import pandas as pd
 
+import pandas as pd
+import pandas_market_calendars as mcal
 import yfinance as yf
 from alpaca.trading.enums import OrderSide, TimeInForce
 from alpaca.trading.requests import MarketOrderRequest
 from pymongo import MongoClient
 
-import pandas as pd
-import pandas_market_calendars as mcal
-from datetime import datetime
-import pytz
-
+from config import USE_BIGQUERY_PRICES
 from control import stop_loss, take_profit
-from strategies.talib_indicators import (
+from strategies.talib_indicators import (  # LINEARREG_indicator,; MINUS_DI_indicator,; PLUS_DI_indicator,
     AD_indicator,
     ADOSC_indicator,
     ADX_indicator,
@@ -106,7 +101,6 @@ from strategies.talib_indicators import (
     HT_TRENDMODE_indicator,
     KAMA_indicator,
     LINEARREG_ANGLE_indicator,
-    # LINEARREG_indicator,
     LINEARREG_INTERCEPT_indicator,
     LINEARREG_SLOPE_indicator,
     MA_indicator,
@@ -119,12 +113,10 @@ from strategies.talib_indicators import (
     MFI_indicator,
     MIDPOINT_indicator,
     MIDPRICE_indicator,
-    # MINUS_DI_indicator,
     MINUS_DM_indicator,
     MOM_indicator,
     NATR_indicator,
     OBV_indicator,
-    # PLUS_DI_indicator,
     PLUS_DM_indicator,
     PPO_indicator,
     ROC_indicator,
@@ -152,6 +144,7 @@ from strategies.talib_indicators import (
     WILLR_indicator,
     WMA_indicator,
 )
+from utilities.bigquery_utils import get_latest_price_bq
 
 sys.path.append("..")
 
@@ -300,7 +293,7 @@ statistical_functions = [
     VAR_indicator,
 ]
 
-strategies = ( 
+strategies = (
     volume_indicators
     + overlap_studies
     + momentum_indicators
@@ -314,42 +307,46 @@ strategies = (
 
 def market_status() -> str:
     """Determines the current status of the market (open, closed, or early hours)."""
-    nyse = mcal.get_calendar('NYSE')
-    now = pd.Timestamp.now(tz='US/Eastern')
+    nyse = mcal.get_calendar("NYSE")
+    now = pd.Timestamp.now(tz="US/Eastern")
     sched = nyse.schedule(start_date=now.date(), end_date=now.date())
 
     if sched.empty:
-        return 'closed'
+        return "closed"
 
-    today_schedule = sched.iloc[0]  # Safe access without worrying about index tz mismatch
-    open_time = today_schedule['market_open']
-    close_time = today_schedule['market_close']
+    today_schedule = sched.iloc[
+        0
+    ]  # Safe access without worrying about index tz mismatch
+    open_time = today_schedule["market_open"]
+    close_time = today_schedule["market_close"]
     pre_open = open_time - pd.Timedelta(hours=5.5)
 
     if open_time <= now <= close_time:
-        return 'open'
+        return "open"
     if pre_open <= now < open_time:
-        return 'early_hours'
-    return 'closed'
-
+        return "early_hours"
+    return "closed"
 
 
 def get_latest_price(ticker: str) -> float | None:
     """
-        Fetches the latest closing price for a given stock ticker from Yahoo Finance.
+    Fetches the latest closing price for a given stock ticker from Yahoo Finance.
 
-        Args:
-            ticker (str): The stock ticker symbol (e.g., 'AAPL', 'MSFT').
+    Args:
+        ticker (str): The stock ticker symbol (e.g., 'AAPL', 'MSFT').
 
-        Returns:
-            float: The latest closing price, rounded to 2 decimal places.
-                   Returns None if there is an error fetching the price.
+    Returns:
+        float: The latest closing price, rounded to 2 decimal places.
+               Returns None if there is an error fetching the price.
 
-        Raises:
-            Exception: Logs any exceptions encountered during the process.
+    Raises:
+        Exception: Logs any exceptions encountered during the process.
 
     """
     try:
+        if USE_BIGQUERY_PRICES:
+            return get_latest_price_bq(ticker)
+
         ticker_yahoo = yf.Ticker(ticker)
         data = ticker_yahoo.history()
 
@@ -359,18 +356,24 @@ def get_latest_price(ticker: str) -> float | None:
         return None
 
 
-def place_order(trading_client: object, symbol: str, side: OrderSide, quantity: float, mongo_client: MongoClient) -> object:
+def place_order(
+    trading_client: object,
+    symbol: str,
+    side: OrderSide,
+    quantity: float,
+    mongo_client: MongoClient,
+) -> object:
     """Places a market order for a given symbol and logs the trade details.
 
-        Args:
-            trading_client: The Alpaca trading client.
-            symbol (str): The symbol to trade.
-            side (OrderSide): The side of the order (buy or sell).
-            quantity (float): The quantity to trade.
-            mongo_client: The MongoDB client.
+    Args:
+        trading_client: The Alpaca trading client.
+        symbol (str): The symbol to trade.
+        side (OrderSide): The side of the order (buy or sell).
+        quantity (float): The quantity to trade.
+        mongo_client: The MongoDB client.
 
-        Returns:
-            Order: The order object returned by the Alpaca API.
+    Returns:
+        Order: The order object returned by the Alpaca API.
 
     """
     market_order_data = MarketOrderRequest(
@@ -418,31 +421,32 @@ def place_order(trading_client: object, symbol: str, side: OrderSide, quantity: 
 
     return order
 
+
 def update_ranks(client: MongoClient, logger: logging.Logger) -> None:
     """Updates the ranking of trading strategies based on their performance.
-        This function calculates a score for each strategy based on its total points,
-        portfolio value, successful trades, and failed trades. It then ranks the
-        strategies based on this score and stores the ranking in the 'rank' collection.
-        It also clears the historical database after updating the ranks.
-        Args:
-            client (MongoClient): A MongoClient instance connected to the MongoDB database.
-                The client should have access to the 'trading_simulator' and
-                'HistoricalDatabase' databases.
-        Returns:
-            None. The function updates the 'rank' collection in the
-            'trading_simulator' database and clears the 'HistoricalDatabase' database.
-        Raises:
-            pymongo.errors.PyMongoError: If there is an error interacting with the
-                MongoDB database.
+    This function calculates a score for each strategy based on its total points,
+    portfolio value, successful trades, and failed trades. It then ranks the
+    strategies based on this score and stores the ranking in the 'rank' collection.
+    It also clears the historical database after updating the ranks.
+    Args:
+        client (MongoClient): A MongoClient instance connected to the MongoDB database.
+            The client should have access to the 'trading_simulator' and
+            'HistoricalDatabase' databases.
+    Returns:
+        None. The function updates the 'rank' collection in the
+        'trading_simulator' database and clears the 'HistoricalDatabase' database.
+    Raises:
+        pymongo.errors.PyMongoError: If there is an error interacting with the
+            MongoDB database.
 
     """
     pts_coll = client.trading_simulator.points_tally
     rank_coll = client.trading_simulator.rank
     holdings_coll = client.trading_simulator.algorithm_holdings
-   
+
     # Clear existing ranks
     rank_coll.delete_many({})
-    
+
     # Clear historical database
     client.HistoricalDatabase.HistoricalDatabase.delete_many({})
 
@@ -453,29 +457,33 @@ def update_ranks(client: MongoClient, logger: logging.Logger) -> None:
         # Skip test strategies
         if strategy_name in ["test", "test_strategy"]:
             continue
-        
+
         pts_doc = pts_coll.find_one({"strategy": strategy_name})
         if not pts_doc:
             logger.warning(f"No points document for strategy {strategy_name}")
             total_points = 0
         else:
             total_points = pts_doc["total_points"]
-        
+
         performance_diff = doc.get("successful_trades", 0) - doc.get("failed_trades", 0)
-        
+
         if total_points > 0:
             # Good performing strategies: use total_points*2 + portfolio_value as score
-            score = (total_points * 2 + doc["portfolio_value"], 
-                    performance_diff,
-                    doc["amount_cash"],
-                    strategy_name)
+            score = (
+                total_points * 2 + doc["portfolio_value"],
+                performance_diff,
+                doc["amount_cash"],
+                strategy_name,
+            )
         else:
             # Poor performing strategies: use portfolio_value as score
-            score = (doc["portfolio_value"],
-                    performance_diff,
-                    doc["amount_cash"],
-                    strategy_name)
-                    
+            score = (
+                doc["portfolio_value"],
+                performance_diff,
+                doc["amount_cash"],
+                strategy_name,
+            )
+
         heapq.heappush(heap, score)
 
     rank = 1
@@ -483,6 +491,6 @@ def update_ranks(client: MongoClient, logger: logging.Logger) -> None:
         _, _, _, strategy = heapq.heappop(heap)
         rank_coll.insert_one({"strategy": strategy, "rank": rank})
         rank += 1
-        
+
     logger.info("Successfully updated ranks")
     logger.info("Successfully cleared historical database")
