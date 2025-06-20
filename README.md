@@ -252,6 +252,11 @@ BASE_URL = "https://paper-api.alpaca.markets"  # Paper trading (safe for testing
 # BASE_URL = "https://api.alpaca.markets"      # Live trading (uses real money)
 WANDB_API_KEY = "your_wandb_api_key"
 MONGO_URL = "your_mongo_connection_string"
+BQ_DATASET = "your_bigquery_dataset"
+BQ_TABLE = "your_bigquery_table"
+# Path to service account JSON; leave blank to use default credentials
+BQ_SERVICE_ACCOUNT = ""
+USE_BIGQUERY_PRICES = "False"
 ```
 
 > ⚠️ **IMPORTANT**: The default configuration uses Alpaca's paper trading environment. To switch to live trading (using real money), change the BASE_URL to "https://api.alpaca.markets". Only do this once you've thoroughly tested your strategies and understand the risks involved.
