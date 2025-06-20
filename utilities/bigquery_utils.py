@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import time
 from typing import Dict, Optional
 
 from google.cloud import bigquery
@@ -16,6 +17,8 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 _cached_prices: Dict[str, float] = {}
+_cache_timestamp: float = 0.0
+_CACHE_TTL_SECONDS = 60
 
 # scopes required for BigQuery and Drive access
 _SCOPES = [
@@ -47,9 +50,13 @@ def _load_credentials() -> Optional[service_account.Credentials]:
 def fetch_latest_prices_bq() -> Dict[str, float]:
     """Fetch the latest prices from BigQuery.
 
-    Returns cached results if any error occurs.
+    Returns cached results if any error occurs. Results are cached for
+    ``_CACHE_TTL_SECONDS`` to limit BigQuery requests.
     """
-    global _cached_prices
+    global _cached_prices, _cache_timestamp
+
+    if _cached_prices and time.time() - _cache_timestamp < _CACHE_TTL_SECONDS:
+        return _cached_prices
 
     try:
         creds = _load_credentials()
@@ -69,6 +76,7 @@ def fetch_latest_prices_bq() -> Dict[str, float]:
                 continue
             prices[ticker] = float(price)
         _cached_prices = prices
+        _cache_timestamp = time.time()
         return prices
 
     except Exception as exc:  # pragma: no cover - network-dependent

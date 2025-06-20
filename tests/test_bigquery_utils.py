@@ -117,6 +117,41 @@ def test_fetch_latest_prices_failure_uses_cache(monkeypatch):
     assert second == first
 
 
+def test_fetch_latest_prices_cache_ttl(monkeypatch):
+    bq = load_bigquery_utils(monkeypatch)
+    rows = [{"ticker": "IBM", "price": 10.0}]
+    call_count = {"count": 0}
+
+    class FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def query(self, query):
+            call_count["count"] += 1
+
+            class Job:
+                def result(self_inner):
+                    return rows
+
+            return Job()
+
+    monkeypatch.setattr(bq.bigquery, "Client", FakeClient, raising=False)
+    current_time = [1000.0]
+    monkeypatch.setattr(bq.time, "time", lambda: current_time[0], raising=False)
+
+    first = bq.fetch_latest_prices_bq()
+    assert call_count["count"] == 1
+
+    second = bq.fetch_latest_prices_bq()
+    assert call_count["count"] == 1
+    assert second == first
+
+    current_time[0] += 61
+    third = bq.fetch_latest_prices_bq()
+    assert call_count["count"] == 2
+    assert third == first
+
+
 def test_json_service_account(monkeypatch):
     data = {"key": "value"}
     bq = load_bigquery_utils(monkeypatch, json.dumps(data))
