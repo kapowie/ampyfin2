@@ -4,6 +4,7 @@ alpaca-py
 yfinance[nospam]
 scipy
 pandas
+pandas_market_calendars
 cython
 fastapi
 uvicorn
