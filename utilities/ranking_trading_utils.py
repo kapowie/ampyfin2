@@ -3,6 +3,7 @@ import logging
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Optional
 
 import pandas as pd
 import pandas_market_calendars as mcal
@@ -328,7 +329,7 @@ def market_status() -> str:
     return "closed"
 
 
-def get_latest_price(ticker: str) -> float | None:
+def get_latest_price(ticker: str) -> Optional[float]:
     """
     Fetches the latest closing price for a given stock ticker from Yahoo Finance.
 
