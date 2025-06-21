@@ -86,7 +86,7 @@ def fetch_latest_prices_bq() -> Dict[str, float]:
         return _cached_prices
 
 
-def get_latest_price_bq(ticker: str) -> float | None:
+def get_latest_price_bq(ticker: str) -> Optional[float]:
     """Return the latest price for ``ticker`` using BigQuery cache."""
     prices = fetch_latest_prices_bq()
     return prices.get(ticker)
